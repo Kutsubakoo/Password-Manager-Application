@@ -2,6 +2,7 @@ from tkinter import *
 from tkinter import messagebox
 from random import choice, randint, shuffle
 import pyperclip
+import json
 # ---------------------------- PASSWORD GENERATOR ------------------------------- #
 def generate_pass():
     letters = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z']
@@ -15,7 +16,6 @@ def generate_pass():
     password_list = letter_list + symbols_list + number_list
 
     shuffle(password_list)
-    print(password_list)
 
     password = ""
     for char in password_list:
@@ -31,21 +31,49 @@ def save():
     website = website_entry.get()
     email_username = email_username_entry.get()
     password = password_entry.get()
+    new_data = {
+        website: {
+            "email": email_username,
+            "password": password,
+        }
+    }
 
     if len(website) == 0 or len(password) == 0:
         messagebox.showerror(title="Oops", message="Please don't leave any fields empty!")
     else:
-        is_ok = messagebox.askokcancel(title=website, message=f"These are the details entered: \nEmail: {email_username} "
-                                                  f"\nPassword: {password} \n\nIs it ok to save?")
+        try:
+            with open("data.json", "r") as data_file: # Specify file
+                data = json.load(data_file)  # get hold of the data
 
-        if is_ok:
-            with open("data.txt", "a") as data_file:
-                data_file.write(f"{website} | {email_username} | {password}\n")
-                website_entry.delete(0, END)
-                email_username_entry.delete(0, END)
-                email_username_entry.insert(0, "@gmail.com")
-                password_entry.delete(0, END)
+        except FileNotFoundError:
+            with open("data.json", "w") as data_file:
+                json.dump(new_data, data_file, indent=4) # Saving the updated data
+        else:
+            data.update(new_data)  # update dict with new_data
+            with open("data.json", "w") as data_file:
+                json.dump(data, data_file, indent=4)
+        finally:
+            messagebox.showinfo(title=website, message=f"Account details for {website} added!")
+            website_entry.delete(0, END)
+            email_username_entry.delete(0, END)
+            email_username_entry.insert(0, "@gmail.com")
+            password_entry.delete(0, END)
 
+# ---------------------------- FIND PASSWORD ------------------------------- #
+def find_password():
+    website = website_entry.get()
+    try:
+        with open("data.json", "r") as data_file:  # Specify file
+            data = json.load(data_file)  # get hold of the data
+    except FileNotFoundError:
+        messagebox.showerror(title="Uhh", message="No Data File Found")
+    else:
+        if website in data:
+            email = data[website]["email"]
+            password = data[website]["password"]
+            messagebox.showinfo(title=website, message=f"Email/Username: {email}\nPassword: {password}")
+        else:
+            messagebox.showerror(title="Uhh", message="No details for the website exists!")
 
 # ---------------------------- UI SETUP ------------------------------- #
 window = Tk()
@@ -69,8 +97,8 @@ password_label.grid(column=0, row=3, pady=5)
 
 # Entries
 
-website_entry = Entry(width=53)
-website_entry.grid(column=1, row=1, columnspan=2)
+website_entry = Entry(width=33)
+website_entry.grid(column=1, row=1)
 website_entry.focus()
 
 email_username_entry = Entry(width=53)
@@ -82,10 +110,13 @@ password_entry.grid(column=1, row=3)
 
 # Buttons
 
+search_button = Button(text="Search", width=15, command=find_password)
+search_button.grid(column=2, row=1)
+
 password_button = Button(text="Generate Password", width=15, command=generate_pass)
 password_button.grid(column=2, row=3)
 
-add_button = Button(text="Add", width=45, command=save)
+add_button = Button(text="Add/Update", width=45, command=save)
 add_button.grid(column=1, row=4, columnspan=2)
 
 
